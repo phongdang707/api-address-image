@@ -1,0 +1,53 @@
+.install-container {
+	min-height: 100vh;
+	position: relative;	
+	background: url('../images/image2.jpg') no-repeat center;
+	background-size: cover;
+	background-attachment: fixed;
+}
+
+.install-container .install-modal {
+	width: 535px;
+	background: #fff;
+	padding: 90px 0;
+	text-align: center;
+	position: absolute;
+	left: 50%; top: 50%;
+	margin-left: -262px;
+	margin-top: -152px;
+}
+
+.install-modal .arena-logo {
+	margin-bottom: 15px;
+	display: inline-block;
+}
+
+.install-modal .get-shopname-form label {
+	color: #9e9e9e;
+	font-size: 15px;
+	margin-bottom: 15px;
+}
+
+.install-modal .get-shopname-form input {
+	width: 177px;
+	height: 30px;
+	background: #fff;
+	padding: 0 10px;
+	border: 1px solid #c4cdd5;
+	line-height: 28px;
+	display: inline-block;
+	min-height: 0;
+	font-size: 13px;
+}
+
+.install-modal .get-shopname-form button {
+	background: #202e78;
+	height: 30px;
+	line-height: 30px;
+	border: none;
+	vertical-align: top;
+	min-height: 0;
+	box-shadow: none;
+	font-size: 13px;
+	padding: 0 30px;
+}

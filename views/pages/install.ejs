@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <% include ../partials/header.ejs %>
+</head>
+
+<body> 
+  <div class="install-container content">
+    <div class="install-modal">
+      <div class="install-modal-content">
+        <a href="" class="arena-logo">
+          <img src="/images/logo.png" alt="">
+        </a>
+        <form class="get-shopname-form" method="GET" action="/shopify/auth">
+          <label>Enter your Shopify store's URL:</label>
+          <input type="text" name="shop" id="shop" placeholder="example.myshopify.com"/>
+          <button type="submit">Install</button>
+        </form>  
+      </div>
+    </div>
+  </div>
+</body>
+<script type="text/javascript">
+  $(window).load(() => {
+    $('.install-container').easybg({
+      images: [
+        'images/image1.jpg',
+        'images/image2.jpg',
+        'images/image3.jpg',
+        'images/image4.jpg',
+        'images/image5.jpg',
+      ],
+      interval: 7000,
+      
+      speed : 1000, // 1 minute
+      
+      ignoreError : false,
+      
+      changeMode : 'random', // normal or random
+      
+      initIndex : Math.floor(Math.random() * Math.floor(4)),
+      
+      cloneClassId : null,
+      
+      cloneClassName : 'easybgClone',
+      
+      debug : false
+
+    })
+  })
+</script>
+</html>

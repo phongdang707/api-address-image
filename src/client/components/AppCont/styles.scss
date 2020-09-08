@@ -1,0 +1,47 @@
+body {
+	background: #fff;
+}
+
+.App-Main-Content {
+	padding: 0 15px 60px;
+
+	img {
+		max-width: 250px;
+		margin: 15px 0;
+	}
+
+	button {
+		margin: 0 3px;
+	}
+
+	.App-Heading {
+		margin: 15px 0;
+
+		>h1 {
+			margin-bottom: 15px;
+		}
+	}
+
+	.App-Body {
+		
+		.Polaris-Stack {
+			
+			.Polaris-Stack__Item:first-child {
+				flex: 0 1 20%;
+			}
+
+			.Polaris-Card {
+				padding: 15px;
+
+				.Polaris-Heading {
+					padding-bottom: 10px;
+				}
+			}
+		}
+	}
+
+	.footer-action {
+		padding-top: 20px;
+		text-align: right;
+	}
+}
