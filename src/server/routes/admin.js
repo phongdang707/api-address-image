@@ -52,6 +52,7 @@ AdminApi.get("/load-app-settings", async (ctx) => {
 AdminApi.post("/test", bodyParser(), async (ctx) => {
   const { address } = ctx.request.body;
   const { image } = ctx.request.file;
+  console.log("address", address);
   console.log("image", image);
   console.log("ctx.request.body", ctx.request);
   const _data = await uploadMetafield({ address, image });
