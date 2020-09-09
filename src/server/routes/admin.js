@@ -2,6 +2,7 @@ const Router = require("koa-router");
 const AdminApi = new Router();
 const bodyParser = require("koa-bodyparser");
 const asyncBusboy = require("async-busboy");
+const multer = require("@koa/multer");
 
 const AppStatus = require("../middlewares/app-status");
 const LoadAppSettings = require("../middlewares/load-app-settings");
@@ -49,13 +50,27 @@ AdminApi.get("/load-app-settings", async (ctx) => {
   ctx.body = _data;
 });
 
-AdminApi.post("/test", bodyParser(), async (ctx) => {
+const upload = multer();
+AdminApi.post("/test", bodyParser(), upload.single("image"), async (ctx) => {
+  // const { shop, accessToken } = ctx.session;
+
+  const shop = "phongdang707.myshopify.com";
+  const accessToken = "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";
+
   const { address } = ctx.request.body;
-  const { image } = ctx.request.file;
-  console.log("address", address);
-  console.log("image", image);
-  console.log("ctx.request.body", ctx.request);
-  const _data = await uploadMetafield({ address, image });
+  const { originalname } = ctx.request.file;
+
+  const image = ctx.request.file.buffer.toString("base64");
+
+  // console.log("encoded", encoded);
+  console.log("originalname", originalname);
+
+  const _data = await uploadMetafield(
+    { shop, accessToken },
+    address,
+    image,
+    originalname
+  );
   ctx.body = _data;
 });
 
