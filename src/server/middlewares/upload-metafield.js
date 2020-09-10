@@ -1,31 +1,67 @@
 const apiVer = "2020-07";
 const rp = require("request-promise");
 
-module.exports = function uploadMetaField(auth, address, img, originalname) {
-  const { shop, accessToken } = auth;
+const { Pool } = require("pg");
+require("dotenv").config();
 
-  if (!address || address == "") {
+const {
+  POSTGRES_USER,
+  POSTGRES_HOST,
+  POSTGRES_DB,
+  POSTGRES_PWD,
+  POSTGRES_PORT,
+} = process.env;
+const conObj = {
+  user: POSTGRES_USER,
+  host: POSTGRES_HOST,
+  database: POSTGRES_DB,
+  password: POSTGRES_PWD,
+  port: POSTGRES_PORT,
+};
+const pool = new Pool(conObj);
+
+module.exports = function uploadMetaField(
+  auth,
+  address,
+  img,
+  originalname,
+  data,
+  shop
+) {
+  let { accessToken } = auth;
+  const { last_name, email, first_name, password, confirmPass } = data;
+
+  if (!address || address.toString() == "") {
     return {
       status: "error",
-      msg: "The address cannot be left blank",
+      msg: "The address cannot be empty",
+    };
+  } else if (!originalname || !img) {
+    return {
+      status: "error",
+      msg: "No files selected",
     };
   }
-  // else if (!img) {
-  //   return {
-  //     status: "error",
-  //     msg: "Images cannot be left blank",
-  //   };
-  // }
+
   let themeMainId = "";
+  let urlImage = "";
+
+  let MetaFieldAddress;
+  let MetaFieldImage;
 
   const uriGetAllThem = `https://${shop}/admin/api/${apiVer}/themes.json`;
-  const uriAssetTheme = `https://${shop}/admin/api/${apiVer}/themes/{theme_id}/assets.json`;
   const uriAddressMetaField = `https://${shop}/admin/api/${apiVer}/metafields.json`;
+  const uirRegister = `https://${shop}/admin/api/${apiVer}/customers.json`;
 
   return (async () => {
-    /**
-     * Check script tag to know app install at first or not
-     */
+    let errors;
+    const client = await pool.connect();
+
+    const token = await client.query(
+      `SELECT * FROM store_settings WHERE store_name='${shop}'`
+    );
+    accessToken = token.rows[0].token;
+
     // Get Theme Id
     const getThemId = await rp({
       uri: uriGetAllThem,
@@ -43,6 +79,7 @@ module.exports = function uploadMetaField(auth, address, img, originalname) {
         });
       })
       .catch((err) => {
+        // console.log("err1", err);
         return {
           status: "error",
           msg: err.message,
@@ -50,7 +87,7 @@ module.exports = function uploadMetaField(auth, address, img, originalname) {
       });
 
     // Add MetaField For Address
-    const addMetafield = await rp({
+    const addMetafieldAddress = await rp({
       uri: uriAddressMetaField,
       method: "POST",
       headers: {
@@ -67,15 +104,16 @@ module.exports = function uploadMetaField(auth, address, img, originalname) {
       }),
     })
       .then((res) => {
-        // console.log("res", res);
+        console.log("res", res);
+        MetaFieldAddress = res;
       })
       .catch((err) => {
+        // console.log("err2", err);
         return { status: "err", msg: err.message };
       });
 
     // Get Link Image From Asset
     if (themeMainId !== "") {
-      // console.log(img);
       const getLinkImageFromAsset = await rp({
         uri: `https://${shop}/admin/api/${apiVer}/themes/${themeMainId}/assets.json`,
         method: "PUT",
@@ -92,10 +130,11 @@ module.exports = function uploadMetaField(auth, address, img, originalname) {
         json: true,
       })
         .then((res) => {
-          console.log("resp", res);
+          console.log("res", res);
+          return (urlImage = res.asset.public_url);
         })
         .catch((err) => {
-          console.log("err========", err);
+          // console.log("err2", err);
           return {
             status: "error",
             msg: err.message,
@@ -103,49 +142,82 @@ module.exports = function uploadMetaField(auth, address, img, originalname) {
         });
     }
 
-    return {
-      status: "success",
-      msg: "Okay",
-    };
+    // Add Metafield For Image
+    const addMetafieldImage = await rp({
+      uri: uriAddressMetaField,
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({
+        metafield: {
+          namespace: "image",
+          key: "image",
+          value: `${urlImage}`,
+          value_type: "string",
+        },
+      }),
+    })
+      .then((res) => {
+        MetaFieldImage = res;
+      })
+      .catch((err) => {
+        // console.log("err4", err);
+        return { status: "err", msg: err.message };
+      });
+
+    const RegisterCustomer = await rp({
+      uri: uirRegister,
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({
+        customer: {
+          first_name: first_name,
+          last_name: last_name,
+          email: email,
+          password: password,
+          password_confirmation: confirmPass,
+          metafields: [
+            {
+              namespace: "address",
+              key: "address",
+              value: `${address}`,
+              value_type: "string",
+            },
+            {
+              namespace: "image",
+              key: "image",
+              value: `${urlImage}`,
+              value_type: "string",
+            },
+          ],
+        },
+      }),
+    })
+      .then((res) => {})
+      .catch((err) => {
+        errors = err;
+        return { status: "err", msg: err };
+      });
+    if (errors) {
+      return {
+        status: "err",
+        msg: errors,
+      };
+    } else {
+      return {
+        status: "success",
+        msg: "Okay",
+      };
+    }
   })().catch((err) => {
     return {
       status: "error",
       msg: err.message,
     };
   });
-
-  // const uri = `https://${shop}/admin/api/${apiVer}/metafields.json`;
-
-  // return new Promise((resolve, reject) => {
-  //   rp({
-  //     uri: uri,
-  //     method: "POST",
-  //     headers: {
-  //       "X-Shopify-Access-Token": accessToken,
-  //       "Content-type": "application/json; charset=utf-8",
-  //     },
-  //     body: JSON.stringify({
-  //       metafield: {
-  //         namespace: "inventory",
-  //         key: "warehouse",
-  //         value: 25,
-  //         value_type: "integer",
-  //       },
-  //     }),
-  //   })
-  //     .then((response) => {
-  //       console.log("Task 1");
-  //       console.log(response);
-  //       resolve({
-  //         status: "success",
-  //         msg: "script tag installed",
-  //       });
-  //     })
-  //     .catch((err) => {
-  //       resolve({
-  //         status: "error",
-  //         msg: err.message,
-  //       });
-  //     });
-  // });
 };

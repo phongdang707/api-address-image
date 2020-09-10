@@ -7,6 +7,7 @@ const multer = require("@koa/multer");
 const AppStatus = require("../middlewares/app-status");
 const LoadAppSettings = require("../middlewares/load-app-settings");
 const uploadMetafield = require("../middlewares/upload-metafield");
+const GetAccessToken = require("../middlewares/get-access-token");
 
 /**
  * ROUTE FOR HANDLE APP STATUS================================================================
@@ -51,27 +52,46 @@ AdminApi.get("/load-app-settings", async (ctx) => {
 });
 
 const upload = multer();
-AdminApi.post("/test", bodyParser(), upload.single("image"), async (ctx) => {
-  // const { shop, accessToken } = ctx.session;
+AdminApi.post(
+  "/register",
+  bodyParser(),
+  upload.single("image"),
+  async (ctx) => {
+    const { accessToken } = ctx.session;
 
-  const shop = "phongdang707.myshopify.com";
-  const accessToken = "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";
+    let image = "";
+    let originalname = "";
 
-  const { address } = ctx.request.body;
-  const { originalname } = ctx.request.file;
+    const {
+      shop,
+      address,
+      last_name,
+      email,
+      first_name,
+      password,
+      confirmPass,
+    } = ctx.request.body;
 
-  const image = ctx.request.file.buffer.toString("base64");
+    //Check file
+    if (
+      ctx.request.file &&
+      (ctx.request.file.originalname || ctx.request.file.buffer)
+    ) {
+      image = ctx.request.file.buffer.toString("base64");
+      originalname = ctx.request.file.originalname;
+    }
 
-  // console.log("encoded", encoded);
-  console.log("originalname", originalname);
-
-  const _data = await uploadMetafield(
-    { shop, accessToken },
-    address,
-    image,
-    originalname
-  );
-  ctx.body = _data;
-});
+    // Register Account
+    const _data = await uploadMetafield(
+      { accessToken },
+      address,
+      image,
+      originalname,
+      { last_name, email, first_name, password, confirmPass },
+      shop
+    );
+    ctx.body = _data;
+  }
+);
 
 module.exports = AdminApi;

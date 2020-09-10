@@ -15,6 +15,8 @@ const bodyParser = require("koa-bodyParser");
 // Crypto
 const crypto = require("crypto");
 
+const cors = require("@koa/cors");
+
 // Koa Shopify Authen
 import "isomorphic-fetch";
 import createShopifyAuth, { verifyRequest } from "@shopify/koa-shopify-auth";
@@ -70,6 +72,9 @@ const app = new Koa();
 // Create Koa router
 const router = new Router();
 const webhook_router = new Router();
+
+// apply cors
+app.use(cors());
 
 // Signed cookie key. Replace with App Secret
 app.keys = ["koa_wishlist_app"];
@@ -151,7 +156,7 @@ app.use(async (ctx, next) => {
 });
 app.proxy = true;
 app.use(session(SESS_CONFIG, app));
-// app.use(devMiddleware(compile));
+app.use(devMiddleware(compile));
 //app.use(hotMiddleware(compile));
 app.use(
   createShopifyAuth({
@@ -162,8 +167,6 @@ app.use(
     accessMode: "offline",
     afterAuth(ctx) {
       const { shop, accessToken } = ctx.session;
-      console.log("shop", shop);
-      console.log("accessToken", accessToken);
 
       console.log("afterAuth");
       return (async () => {
@@ -197,7 +200,7 @@ app.use(
         const InstallFEResource = require("./middlewares/install-fe-resources");
         let taskC = await InstallFEResource({ shop, accessToken });
 
-        // ctx.redirect('/')
+        ctx.redirect("/");
       })().catch((err) => {
         console.log(err.message);
         console.log("Error when install resource at very first installation");
