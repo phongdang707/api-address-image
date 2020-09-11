@@ -22,45 +22,42 @@ const pool = new Pool(conObj);
 
 module.exports = function uploadMetaField(
   auth,
-  address,
-  img,
-  originalname,
+  passportFull,
+  proofOfAddressFull,
   data,
   shop
 ) {
   let { accessToken } = auth;
-  const { last_name, email, first_name, password, confirmPass } = data;
-
-  if (!address || address.toString() == "") {
-    return {
-      status: "error",
-      msg: "The address cannot be empty",
-    };
-  } else if (!originalname || !img) {
-    return {
-      status: "error",
-      msg: "No files selected",
-    };
-  }
+  let { last_name, email, first_name, password, confirmPass } = data;
+  let { originalNamePassport, passport } = passportFull;
+  let { originalNameProofOfAddress, proofOfAddress } = proofOfAddressFull;
 
   let themeMainId = "";
   let urlImage = "";
+  let urlPassport = "";
+  let urlProofOfAddress = "";
 
   let MetaFieldAddress;
   let MetaFieldImage;
+  let MetaFieldPassport;
+  let MetaFieldProofOfAddress;
 
-  const uriGetAllThem = `https://${shop}/admin/api/${apiVer}/themes.json`;
-  const uriAddressMetaField = `https://${shop}/admin/api/${apiVer}/metafields.json`;
-  const uirRegister = `https://${shop}/admin/api/${apiVer}/customers.json`;
+  // UR
+  let uriGetAllThem = `https://${shop}/admin/api/${apiVer}/themes.json`;
+  let uriAddressMetaField = `https://${shop}/admin/api/${apiVer}/metafields.json`;
+  let uirRegister = `https://${shop}/admin/api/${apiVer}/customers.json`;
 
   return (async () => {
     let errors;
-    const client = await pool.connect();
 
+    // Connect DB
+    const client = await pool.connect();
     const token = await client.query(
       `SELECT * FROM store_settings WHERE store_name='${shop}'`
     );
+    console.log("token", token);
     accessToken = token.rows[0].token;
+    console.log("accessToken", accessToken);
 
     // Get Theme Id
     const getThemId = await rp({
@@ -86,35 +83,10 @@ module.exports = function uploadMetaField(
         };
       });
 
-    // Add MetaField For Address
-    const addMetafieldAddress = await rp({
-      uri: uriAddressMetaField,
-      method: "POST",
-      headers: {
-        "X-Shopify-Access-Token": accessToken,
-        "Content-type": "application/json; charset=utf-8",
-      },
-      body: JSON.stringify({
-        metafield: {
-          namespace: "address",
-          key: "address",
-          value: `${address}`,
-          value_type: "string",
-        },
-      }),
-    })
-      .then((res) => {
-        console.log("res", res);
-        MetaFieldAddress = res;
-      })
-      .catch((err) => {
-        // console.log("err2", err);
-        return { status: "err", msg: err.message };
-      });
-
-    // Get Link Image From Asset
+    // Get Link
     if (themeMainId !== "") {
-      const getLinkImageFromAsset = await rp({
+      // Get Link Assets Passport
+      const getLinkPassportFromAsset = await rp({
         uri: `https://${shop}/admin/api/${apiVer}/themes/${themeMainId}/assets.json`,
         method: "PUT",
         headers: {
@@ -123,15 +95,43 @@ module.exports = function uploadMetaField(
         },
         body: {
           asset: {
-            key: `assets/${originalname}`,
-            attachment: `${img}`,
+            key: `assets/${originalNamePassport}`,
+            attachment: `${passport}`,
           },
         },
         json: true,
       })
         .then((res) => {
           console.log("res", res);
-          return (urlImage = res.asset.public_url);
+          return (urlPassport = res.asset.public_url);
+        })
+        .catch((err) => {
+          // console.log("err2", err);
+          return {
+            status: "error",
+            msg: err.message,
+          };
+        });
+
+      // Get Link Assets ProofOfAddress
+      const getLinkProofOfAddressFromAsset = await rp({
+        uri: `https://${shop}/admin/api/${apiVer}/themes/${themeMainId}/assets.json`,
+        method: "PUT",
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-type": "application/json; charset=utf-8",
+        },
+        body: {
+          asset: {
+            key: `assets/${originalNameProofOfAddress}`,
+            attachment: `${proofOfAddress}`,
+          },
+        },
+        json: true,
+      })
+        .then((res) => {
+          console.log("res", res);
+          return (urlProofOfAddress = res.asset.public_url);
         })
         .catch((err) => {
           // console.log("err2", err);
@@ -142,30 +142,57 @@ module.exports = function uploadMetaField(
         });
     }
 
-    // Add Metafield For Image
-    const addMetafieldImage = await rp({
-      uri: uriAddressMetaField,
-      method: "POST",
-      headers: {
-        "X-Shopify-Access-Token": accessToken,
-        "Content-type": "application/json; charset=utf-8",
-      },
-      body: JSON.stringify({
-        metafield: {
-          namespace: "image",
-          key: "image",
-          value: `${urlImage}`,
-          value_type: "string",
-        },
-      }),
-    })
-      .then((res) => {
-        MetaFieldImage = res;
-      })
-      .catch((err) => {
-        // console.log("err4", err);
-        return { status: "err", msg: err.message };
-      });
+    // // Add Metafield For Passport
+    // const addMetafieldPassport = await rp({
+    //   uri: uriAddressMetaField,
+    //   method: "POST",
+    //   headers: {
+    //     "X-Shopify-Access-Token": accessToken,
+    //     "Content-type": "application/json; charset=utf-8",
+    //   },
+    //   body: JSON.stringify({
+    //     metafield: {
+    //       namespace: "passport",
+    //       key: "passport",
+    //       value: `${urlPassport}`,
+    //       value_type: "string",
+    //     },
+    //   }),
+    // })
+    //   .then((res) => {
+    //     console.log("res", res);
+    //     MetaFieldPassport = res;
+    //     console.log("MetaFieldPassport", MetaFieldPassport);
+    //   })
+    //   .catch((err) => {
+    //     return { status: "err", msg: err.message };
+    //   });
+
+    // // Add Metafield For ProofOfAddress
+    // const addMetafieldProofOfAdress = await rp({
+    //   uri: uriAddressMetaField,
+    //   method: "POST",
+    //   headers: {
+    //     "X-Shopify-Access-Token": accessToken,
+    //     "Content-type": "application/json; charset=utf-8",
+    //   },
+    //   body: JSON.stringify({
+    //     metafield: {
+    //       namespace: "proofOfAddress",
+    //       key: "proofOfAddress",
+    //       value: `${urlProofOfAddress}`,
+    //       value_type: "string",
+    //     },
+    //   }),
+    // })
+    //   .then((res) => {
+    //     console.log("res", res);
+    //     MetaFieldProofOfAddress = res;
+    //     console.log("MetaFieldProofOfAddress", MetaFieldProofOfAddress);
+    //   })
+    //   .catch((err) => {
+    //     return { status: "err", msg: err.message };
+    //   });
 
     const RegisterCustomer = await rp({
       uri: uirRegister,
@@ -183,15 +210,15 @@ module.exports = function uploadMetaField(
           password_confirmation: confirmPass,
           metafields: [
             {
-              namespace: "address",
-              key: "address",
-              value: `${address}`,
+              namespace: "passport",
+              key: "passport",
+              value: `${urlPassport}`,
               value_type: "string",
             },
             {
-              namespace: "image",
-              key: "image",
-              value: `${urlImage}`,
+              namespace: "proofOfAddress",
+              key: "proofOfAddress",
+              value: `${urlProofOfAddress}`,
               value_type: "string",
             },
           ],
@@ -203,6 +230,8 @@ module.exports = function uploadMetaField(
         errors = err;
         return { status: "err", msg: err };
       });
+
+    // Check Errors
     if (errors) {
       return {
         status: "err",

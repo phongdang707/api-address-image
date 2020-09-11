@@ -8,6 +8,9 @@ const AppStatus = require("../middlewares/app-status");
 const LoadAppSettings = require("../middlewares/load-app-settings");
 const uploadMetafield = require("../middlewares/upload-metafield");
 const GetAccessToken = require("../middlewares/get-access-token");
+const UpdateMetaField = require("../middlewares/update-customer");
+
+const upload = multer();
 
 /**
  * ROUTE FOR HANDLE APP STATUS================================================================
@@ -51,20 +54,37 @@ AdminApi.get("/load-app-settings", async (ctx) => {
   ctx.body = _data;
 });
 
-const upload = multer();
+/**
+ * ============================================================================================
+ */
+
+/**
+ * ROUTE FOR REGISTER CUSTOMER==========================================
+ */
+
 AdminApi.post(
   "/register",
   bodyParser(),
-  upload.single("image"),
+  upload.fields([
+    {
+      name: "passport",
+      maxCount: 1,
+    },
+    {
+      name: "proofOfAddress",
+      maxCount: 2,
+    },
+  ]),
   async (ctx) => {
     const { accessToken } = ctx.session;
 
-    let image = "";
-    let originalname = "";
+    let originalNamePassport = "";
+    let originalNameProofOfAddress = "";
+    let passport = "";
+    let proofOfAddress = "";
 
     const {
       shop,
-      address,
       last_name,
       email,
       first_name,
@@ -73,22 +93,73 @@ AdminApi.post(
     } = ctx.request.body;
 
     //Check file
-    if (
-      ctx.request.file &&
-      (ctx.request.file.originalname || ctx.request.file.buffer)
-    ) {
-      image = ctx.request.file.buffer.toString("base64");
-      originalname = ctx.request.file.originalname;
+    if (ctx.files) {
+      originalNamePassport = ctx.files.passport[0].originalname;
+      passport = ctx.files.passport[0].buffer.toString("base64");
+
+      originalNameProofOfAddress = ctx.files.proofOfAddress[0].originalname;
+      proofOfAddress = ctx.files.proofOfAddress[0].buffer.toString("base64");
+
+      // image = ctx.request.file.buffer.toString("base64");
+      // originalname = ctx.request.file.originalname;
     }
 
     // Register Account
     const _data = await uploadMetafield(
       { accessToken },
-      address,
-      image,
-      originalname,
+      { originalNamePassport, passport },
+      { originalNameProofOfAddress, proofOfAddress },
       { last_name, email, first_name, password, confirmPass },
       shop
+    );
+    ctx.body = _data;
+  }
+);
+
+/**
+ * ============================================================================================
+ */
+/**
+ * ROUTE FOR REGISTER CUSTOMER==========================================
+ */
+
+AdminApi.put(
+  "/update-customer/:id",
+  bodyParser(),
+  upload.fields([
+    {
+      name: "passport",
+      maxCount: 1,
+    },
+    {
+      name: "proofOfAddress",
+      maxCount: 1,
+    },
+  ]),
+  async (ctx) => {
+    const { shop } = ctx.request.body;
+    let customer_id = ctx.params.id;
+
+    let originalNamePassport = "";
+    let originalNameProofOfAddress = "";
+    let passport = "";
+    let proofOfAddress = "";
+
+    //Check file
+    if (ctx.files.passport) {
+      originalNamePassport = ctx.files.passport[0].originalname;
+      passport = ctx.files.passport[0].buffer.toString("base64");
+    }
+    if (ctx.files.proofOfAddress) {
+      originalNameProofOfAddress = ctx.files.proofOfAddress[0].originalname;
+      proofOfAddress = ctx.files.proofOfAddress[0].buffer.toString("base64");
+    }
+
+    // Udpate Account
+    const _data = await UpdateMetaField(
+      { originalNamePassport, passport },
+      { originalNameProofOfAddress, proofOfAddress },
+      { shop, customer_id }
     );
     ctx.body = _data;
   }
