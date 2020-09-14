@@ -1,5 +1,6 @@
 const apiVer = "2020-07";
 const rp = require("request-promise");
+const axios = require("axios");
 
 const { Pool } = require("pg");
 require("dotenv").config();
@@ -29,50 +30,15 @@ module.exports = function UpdateMetaField(
   let { originalNamePassport, passport } = passportFull;
   let { originalNameProofOfAddress, proofOfAddress } = proofOfAddressFull;
 
+  let urlPassport;
+  let urlProofOfAddress;
   let themeMainId = "";
+  let idMetaFieldPassPort;
+  let idMetaFieldProofOfAddress;
 
-  // console.log("customer_id", customer_id);
-  // console.log("shop", shop);
-  // console.log("passport", passport);
-  // console.log("originalNamePassport", originalNamePassport);
-  // console.log("proofOfAddress", proofOfAddress);
-  // console.log("originalNameProofOfAddress", originalNameProofOfAddress);
-
-  // UR
+  // URL
   let uriUpdateCustomer = `https://${shop}/admin/api/${apiVer}/customers/${customer_id}.json`;
   let uriGetAllThem = `https://${shop}/admin/api/${apiVer}/themes.json`;
-
-  var body;
-
-  const getLink = (buffer, originalName) => {
-    let url;
-    rp({
-      uri: `https://${shop}/admin/api/${apiVer}/themes/${themeMainId}/assets.json`,
-      method: "PUT",
-      headers: {
-        "X-Shopify-Access-Token": accessToken,
-        "Content-type": "application/json; charset=utf-8",
-      },
-      body: {
-        asset: {
-          key: `assets/${originalName}`,
-          attachment: `${buffer}`,
-        },
-      },
-      json: true,
-    })
-      .then((res) => {
-        console.log("url", url);
-        return (url = res.asset.public_url);
-      })
-      .catch((err) => {
-        // console.log("err2", err);
-        return {
-          status: "error",
-          msg: err.message,
-        };
-      });
-  };
 
   return (async () => {
     let errors;
@@ -82,8 +48,10 @@ module.exports = function UpdateMetaField(
     const token = await client.query(
       `SELECT * FROM store_settings WHERE store_name='${shop}'`
     );
+    console.log("token", token);
     accessToken = token.rows[0].token;
 
+    // Get Theme ID
     const getThemId = await rp({
       uri: uriGetAllThem,
       method: "GET",
@@ -106,52 +74,154 @@ module.exports = function UpdateMetaField(
         };
       });
 
-    if (originalNamePassport && passport) {
-      if (
-        originalNamePassport &&
-        passport &&
-        proofOfAddress &&
-        originalNameProofOfAddress
-      ) {
-        getLink(originalNamePassport, passport);
-        return body;
-      }
-      return console.log("passport");
-    } else if (proofOfAddress && originalNameProofOfAddress) {
-      if (
-        originalNamePassport &&
-        passport &&
-        proofOfAddress &&
-        originalNameProofOfAddress
-      ) {
-        return console.log("full");
-      }
-      return console.log("proofOfAddress");
+    // Get Link proofOfAddress
+    const getLinkProofOfAddress = await rp({
+      uri: `https://${shop}/admin/api/${apiVer}/themes/${themeMainId}/assets.json`,
+      method: "PUT",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-type": "application/json; charset=utf-8",
+      },
+      body: {
+        asset: {
+          key: `assets/${originalNameProofOfAddress}`,
+          attachment: `${proofOfAddress}`,
+        },
+      },
+      json: true,
+    })
+      .then((res) => {
+        return (urlProofOfAddress = res.asset.public_url);
+      })
+      .catch((err) => {
+        return {
+          status: "error",
+          msg: err.message,
+        };
+      });
+
+    // Get Link Passport
+    const getLinkPassport = await rp({
+      uri: `https://${shop}/admin/api/${apiVer}/themes/${themeMainId}/assets.json`,
+      method: "PUT",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-type": "application/json; charset=utf-8",
+      },
+      body: {
+        asset: {
+          key: `assets/${originalNamePassport}`,
+          attachment: `${passport}`,
+        },
+      },
+      json: true,
+    })
+      .then((res) => {
+        console.log("result Passport", res);
+        return (urlPassport = res.asset.public_url);
+      })
+      .catch((err) => {
+        console.log("err", err);
+        return {
+          status: "error",
+          msg: err.message,
+        };
+      });
+
+    // console.log("originalNameProofOfAddress", originalNameProofOfAddress);
+    // console.log("proofOfAddress", proofOfAddress);
+
+    console.log("urlProofOfAddress", urlProofOfAddress);
+    console.log("urlPassport", urlPassport);
+
+    const getMetaFieldForCustomer = await rp({
+      uri: `https://${shop}/admin/customers/${customer_id}/metafields.json`,
+      method: "GET",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-type": "application/json; charset=utf-8",
+      },
+    })
+      .then((res) => {
+        let obj = JSON.parse(res);
+        for (let i = 0; i < obj.metafields.length; i++) {
+          const element = obj.metafields[i];
+          if (element.key == "passport") {
+            idMetaFieldPassPort = element.id;
+          }
+          if (element.key == "proofOfAddress") {
+            idMetaFieldProofOfAddress = element.id;
+          }
+        }
+      })
+      .catch((err) => {
+        console.log("err", err);
+        return {
+          status: "error",
+          msg: err.message,
+        };
+      });
+
+    // Update
+    if (originalNamePassport != "") {
+      const updateCusomter = await rp({
+        uri: `https://${shop}/admin/api/${apiVer}/metafields/${idMetaFieldPassPort}.json`,
+        // uri: `https://${shop}/admin/customers/4008939356313/metafields.json`,
+        method: "PUT",
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+        body: {
+          metafield: {
+            id: idMetaFieldPassPort,
+            value: `${urlPassport}`,
+            value_type: "string",
+          },
+        },
+        json: true,
+      })
+        .then((result) => {
+          console.log("result=====================", result);
+        })
+        .catch((err) => {
+          console.log("err===========================sad", err);
+          return {
+            status: "error",
+            msg: err.message,
+          };
+        });
     }
 
-    // const getLinkPassportFromAsset = await rp({
-    //   uri: `https://${shop}/admin/api/${apiVer}/themes/${themeMainId}/assets.json`,
-    //   method: "PUT",
-    //   headers: {
-    //     "X-Shopify-Access-Token": accessToken,
-    //     "Content-type": "application/json; charset=utf-8",
-    //   },
-    //   body: body,
-    //   json: true,
-    // })
-    //   .then((res) => {
-    //     console.log("res", res);
-    //     return (urlPassport = res.asset.public_url);
-    //   })
-    //   .catch((err) => {
-    //     // console.log("err2", err);
-    //     return {
-    //       status: "error",
-    //       msg: err.message,
-    //     };
-    //   });
+    if (originalNameProofOfAddress != "") {
+      const updateCusomter = await rp({
+        uri: `https://${shop}/admin/api/${apiVer}/metafields/${idMetaFieldProofOfAddress}.json`,
+        method: "PUT",
+        headers: {
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
+        },
+        body: {
+          metafield: {
+            id: idMetaFieldProofOfAddress,
+            value: `${urlProofOfAddress}`,
+            value_type: "string",
+          },
+        },
+        json: true,
+      })
+        .then((result) => {
+          console.log("result=====================", result);
+        })
+        .catch((err) => {
+          console.log("err===========================sad", err);
+          return {
+            status: "error",
+            msg: err.message,
+          };
+        });
+    }
 
-    // Check Errors
     if (errors) {
       return {
         status: "err",

@@ -137,6 +137,7 @@ AdminApi.put(
     },
   ]),
   async (ctx) => {
+    console.log("VAO UPDATE");
     const { shop } = ctx.request.body;
     let customer_id = ctx.params.id;
 
@@ -149,10 +150,16 @@ AdminApi.put(
     if (ctx.files.passport) {
       originalNamePassport = ctx.files.passport[0].originalname;
       passport = ctx.files.passport[0].buffer.toString("base64");
+    } else {
+      originalNamePassport = "";
+      passport = "";
     }
     if (ctx.files.proofOfAddress) {
       originalNameProofOfAddress = ctx.files.proofOfAddress[0].originalname;
       proofOfAddress = ctx.files.proofOfAddress[0].buffer.toString("base64");
+    } else {
+      originalNameProofOfAddress = "";
+      proofOfAddress = "";
     }
 
     // Udpate Account
